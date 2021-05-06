@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="#eee"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:orientation="vertical" android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:padding="10dp"
+            android:text="Select Default Albums"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+        <CheckBox
+            android:id="@+id/bhajans"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Bhajans"
+            android:onClick="onClick"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+        <CheckBox
+            android:id="@+id/bg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Bhagavad Gītā"
+            android:onClick="onClick"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+        <CheckBox
+            android:id="@+id/bg_chapters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Bhagavad Gītā Chapters"
+            android:onClick="onClick"
+            android:textSize="18sp" />
+        <CheckBox
+            android:id="@+id/sb"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Śrīmad Bhāgavatam"
+            android:onClick="onClick"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+        <CheckBox
+            android:id="@+id/sb_Cantos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Śrīmad Bhāgavatam Cantos"
+            android:onClick="onClick"
+            android:textSize="18sp" />
+        <CheckBox
+            android:id="@+id/cc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Caitanya Caritāmṛta"
+            android:onClick="onClick"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+        <CheckBox
+            android:id="@+id/cc_lila"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Caitanya Caritāmṛta Lila"
+            android:onClick="onClick"
+            android:textSize="18sp" />
+        <CheckBox
+            android:id="@+id/prerana"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Prerana"
+            android:onClick="onClick"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+        <CheckBox
+            android:id="@+id/chetana"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Chetana"
+            android:onClick="onClick"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+        <Button android:id="@+id/alb_selected"
+            android:layout_gravity="end"
+            android:text="Done"
+            android:onClick="onClick"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" >
+
+    <GridView android:id="@+id/grid"
+        android:layout_below="@+id/searchContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <ImageButton android:id="@+id/add"
+        android:onClick="onClick"
+        android:src="@drawable/ic_add_circle_black_24dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:background="#0000"
+        android:layout_margin="10dp"
+        android:scaleType="fitCenter"
+        android:layout_width="45dp"
+        android:layout_height="45dp" />
+
+    <include android:id="@+id/cdb" layout="@layout/create_db" android:visibility="gone"/>
+    <include android:id="@+id/def_alb" layout="@layout/select_default_albums" android:visibility="gone"/>
+
+    <ProgressBar
+        android:id="@+id/progress"
+        style="@android:style/Widget.DeviceDefault.ProgressBar.Small"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#a000"
+        android:onClick="onClick"
+        android:visibility="gone" />
+
+    <TextView android:id="@+id/status"
+        android:background="#afff"
+        android:layout_alignParentBottom="true"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout android:id="@+id/searchContainer"
+        android:paddingStart="5dp"
+        android:paddingEnd="10dp"
+        android:background="#a000"
+        android:visibility="gone"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <EditText android:id="@+id/search"
+            android:textColor="#fff"
+            android:hint="search..."
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content" />
+        <ImageButton android:id="@+id/up"
+            android:paddingEnd="15dp"
+            android:paddingStart="15dp"
+            android:src="@android:drawable/arrow_up_float"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+        <ImageButton android:id="@+id/down"
+            android:paddingEnd="15dp"
+            android:paddingStart="15dp"
+            android:src="@android:drawable/arrow_down_float"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+</RelativeLayout>

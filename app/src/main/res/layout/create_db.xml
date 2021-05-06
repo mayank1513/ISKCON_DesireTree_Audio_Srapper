@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="@android:color/white"
+    android:layout_height="wrap_content" android:layout_width="match_parent">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:padding="7dp"
+                android:text="Database Name"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="155dp"
+                android:padding="6dp"
+                android:text=":"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/db_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="165dp"
+                android:hint="rns"
+                android:singleLine="true"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/b_label"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:onClick="onClick"
+                android:padding="7dp"
+                android:text="Base Url"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="155dp"
+                android:padding="6dp"
+                android:text=":"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/b"
+                android:hint="http://audio.iskcondesiretree.com/02_-_ISKCON_Swamis/ISKCON_Swamis_-_R_to_Y/His_Holiness_Radhanath_Swami/"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="165dp"
+                android:singleLine="true"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <FrameLayout android:padding="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Switch
+                android:id="@+id/hasDefault"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="end"
+                android:checked="true"
+                android:onClick="onClick"
+                android:padding="7dp"
+                android:text="Remove parent album name from all titles?"
+                android:textColor="#666"
+                android:textSize="18sp" />
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/info_label"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:onClick="onClick"
+                android:padding="7dp"
+                android:text="Info url"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="155dp"
+                android:padding="6dp"
+                android:text=":"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/info"
+                android:hint="http://www.radhanathswami.com/"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="165dp"
+                android:singleLine="true"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/fb_label"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:onClick="onClick"
+                android:padding="7dp"
+                android:text="Facebook"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="155dp"
+                android:padding="6dp"
+                android:text=":"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/fb"
+                android:hint="radhanathswami"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="165dp"
+                android:singleLine="true"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/yt_label"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:onClick="onClick"
+                android:padding="7dp"
+                android:text="YouTube"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="155dp"
+                android:padding="6dp"
+                android:text=":"
+                android:textSize="20sp" />
+
+            <EditText android:id="@+id/yt"
+                android:hint="user/radhanathswami"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="165dp"
+                android:singleLine="true"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/yt_base_label"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:onClick="onClick"
+                android:padding="7dp"
+                android:text="YouTube Base"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="155dp"
+                android:padding="6dp"
+                android:text=":"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/yt_base"
+                android:hint=""
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="165dp"
+                android:singleLine="true"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/in_label"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:onClick="onClick"
+                android:padding="7dp"
+                android:text="LinkedIn"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="155dp"
+                android:padding="6dp"
+                android:text=":"
+                android:textSize="20sp" />
+
+            <EditText android:id="@+id/in"
+                android:hint="in/radhanathswami"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="165dp"
+                android:singleLine="true"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <FrameLayout android:id="@+id/twit_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:onClick="onClick"
+                android:padding="7dp"
+                android:text="Twitter"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="155dp"
+                android:padding="6dp"
+                android:text=":"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/twit"
+                android:hint="radhanathswami"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="165dp"
+                android:singleLine="true"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <Button android:id="@+id/createDB"
+            android:onClick="onClick"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:padding="10dp"
+            android:text="Create Database"
+            android:textSize="18sp" />
+    </LinearLayout>
+</ScrollView>

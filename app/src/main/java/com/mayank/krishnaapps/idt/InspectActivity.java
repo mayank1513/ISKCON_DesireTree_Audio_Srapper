@@ -1,7 +1,8 @@
 package com.mayank.krishnaapps.idt;
 /*
-* Inspect and update database tables
-* */
+ * Inspect and update database tables
+ * */
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -10,14 +11,11 @@ import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -28,7 +26,6 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Objects;
@@ -49,6 +46,7 @@ public class InspectActivity extends BaseActivity {
     public static ArrayList<String> stems = new ArrayList<>();
     public static boolean optimizeStem = true, enableEditing = false;
     public static boolean removeParent = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,7 +57,7 @@ public class InspectActivity extends BaseActivity {
             mAudioDb = SQLiteDatabase.openDatabase(baseF + "/" + dir + "db/" + dbName + "_audio", null, SQLiteDatabase.OPEN_READWRITE);
         } catch (Exception e) {
             Toast.makeText(this, "Could not open database: " +
-                    baseF + "/" + dir + "db/" + dbName + "; " +e.getMessage(), Toast.LENGTH_LONG).show();
+                    baseF + "/" + dir + "db/" + dbName + "; " + e.getMessage(), Toast.LENGTH_LONG).show();
             finish();
         }
         mContext = this;
@@ -74,7 +72,7 @@ public class InspectActivity extends BaseActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getTitle().toString()){
+        switch (item.getTitle().toString()) {
             case "Export":
                 Export(dbName);
                 break;
@@ -86,10 +84,11 @@ public class InspectActivity extends BaseActivity {
     }
 
     boolean started = false;
+
     @Override
     protected void onStart() {
         super.onStart();
-        if(started) return;
+        if (started) return;
         started = true;
         mGrid = findViewById(R.id.grid);
         mGrid.setAdapter(new Adapter());
@@ -108,7 +107,8 @@ public class InspectActivity extends BaseActivity {
         c.moveToFirst();
         try {
             optimizeStem = c.getInt(c.getColumnIndex("version")) == 0;
-        } catch (Exception ignored){}
+        } catch (Exception ignored) {
+        }
         c.close();
 //        new Thread(new Runnable() {
 //            @Override
@@ -143,17 +143,17 @@ public class InspectActivity extends BaseActivity {
 //        }).start();
         try {
             Intent intent = getIntent();
-            if(Objects.requireNonNull(intent.getExtras()).containsKey("skip")) {
+            if (Objects.requireNonNull(intent.getExtras()).containsKey("skip")) {
                 startActivity(new Intent(mContext, UpdateActivity.class).putExtra("dir", dir)
                         .putExtra("db_name", dbName).putExtra("album_id", 1L));
                 mDb.close();
                 mAudioDb.close();
                 finish();
             }
-            removeParent = intent.getIntExtra("hasDefTables", 0)==1;
+            removeParent = intent.getIntExtra("hasDefTables", 0) == 1;
             String s = intent.getStringExtra("exp");
             Toast.makeText(mContext, "Hare Krishna - hari hari : " + s, Toast.LENGTH_LONG).show();
-            if(s!=null) {
+            if (s != null) {
                 mDb.close();
                 mAudioDb.close();
                 switch (s) {
@@ -168,13 +168,14 @@ public class InspectActivity extends BaseActivity {
                         break;
                 }
             }
-        } catch (Exception ignored){}
+        } catch (Exception ignored) {
+        }
     }
 
     private void load(ArrayList<String> into, Cursor from) {
         into.clear();
-        if(from.moveToFirst()){
-            do{
+        if (from.moveToFirst()) {
+            do {
                 into.add(from.getString(1));
             } while (from.moveToNext());
         }
@@ -183,14 +184,14 @@ public class InspectActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
-        if(mGrid.getAdapter().getClass() != Adapter.class)
+        if (mGrid.getAdapter().getClass() != Adapter.class)
             mGrid.setAdapter(new Adapter());
         else
             super.onBackPressed();
     }
 
-    public void onClick(View view){
-        if(view.getId() == R.id.add){
+    public void onClick(View view) {
+        if (view.getId() == R.id.add) {
             final PopupMenu p = new PopupMenu(mContext, view);
             p.getMenu().add("Add Albums");
             p.getMenu().add("Edit RegX");
@@ -198,11 +199,11 @@ public class InspectActivity extends BaseActivity {
             p.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                 @Override
                 public boolean onMenuItemClick(MenuItem item) {
-                    switch (item.getTitle().toString()){
+                    switch (item.getTitle().toString()) {
                         case "Enable Editing":
                             enableEditing = !enableEditing;
                             p.getMenu().removeItem(item.getItemId());
-                            p.getMenu().add(enableEditing?"Disable Editing":"Enable Editing");
+                            p.getMenu().add(enableEditing ? "Disable Editing" : "Enable Editing");
                             break;
                         case "Add Albums":
                             startActivity(new Intent(mContext, UpdateActivity.class).putExtra("dir", dir)
@@ -219,19 +220,21 @@ public class InspectActivity extends BaseActivity {
         }
     }
 
-    class Adapter extends BaseAdapter{
+    class Adapter extends BaseAdapter {
         ArrayList<String> tables = new ArrayList<>();
-        Adapter(){
+
+        Adapter() {
             tables.add("audio");
             Cursor c = mDb.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name!='android_metadata' AND name!='sqlite_sequence' order by name", null);
             if (c.moveToFirst()) {
-                while ( !c.isAfterLast() ) {
+                while (!c.isAfterLast()) {
                     tables.add(c.getString(0));
                     c.moveToNext();
                 }
                 c.close();
             }
         }
+
         @Override
         public int getCount() {
             return tables.size();
@@ -255,32 +258,37 @@ public class InspectActivity extends BaseActivity {
             view.setTextSize(24);
             view.setPadding(dp10, dp10, dp10, dp10);
             view.setTypeface(null, Typeface.BOLD);
-            view.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if(position == 0){
-                        mGrid.setAdapter(new TableAdapter(mAudioDb.rawQuery("select * from " + t, null), mAudioDb, t));
-                    } else {
-                        mGrid.setAdapter(new TableAdapter(mDb.rawQuery("select * from " + t, null), mDb, t));
-                    }
+            view.setOnClickListener(v -> {
+                if (position == 0) {
+                    mGrid.setAdapter(new TableAdapter(mAudioDb.rawQuery("select * from " + t, null), mAudioDb, t));
+                } else {
+                    mGrid.setAdapter(new TableAdapter(mDb.rawQuery("select * from " + t, null), mDb, t));
                 }
             });
             return view;
         }
     }
 
-    class TableAdapter extends CursorAdapter{
+    class TableAdapter extends CursorAdapter {
         ArrayList<String> columns;
         int[] widths;
         SQLiteDatabase db;
         String table;
+
         TableAdapter(Cursor c, SQLiteDatabase db, String table) {
             super(mContext, c, 1);
             columns = new ArrayList<>(Arrays.asList(c.getColumnNames()));
             widths = new int[columns.size()];
-            for(int i = 0; i<widths.length; i++) widths[i] = 0;
+            Arrays.fill(widths, 0);
             this.db = db;
             this.table = table;
+            View headerView = newView(mContext, null, null);
+            ((ViewGroup)mGrid.getParent()).addView(headerView);
+            LinearLayout layout = (LinearLayout) ((SyncedHorizontalScrollView)headerView).getChildAt(0);
+            for (int i = 0; i<layout.getChildCount(); i++) {
+                final TextView textView = (TextView) layout.getChildAt(i);
+                textView.setText(String.format("%s ", columns.get(i)));
+            }
         }
 
         @Override
@@ -291,12 +299,12 @@ public class InspectActivity extends BaseActivity {
             layout.setPadding(dp10, dp10, dp10, dp10);
             layout.setBackgroundColor(Color.GRAY);
             view.addView(layout);
-            for(int i = 0; i<columns.size(); i++) {
+            for (int i = 0; i < columns.size(); i++) {
                 EditText textView = new EditText(mContext);
                 layout.addView(textView);
                 textView.setTextSize(20);
                 ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) textView.getLayoutParams();
-                p.setMargins(dp10/2,dp10/2,dp10/2,dp10/2);
+                p.setMargins(dp10 / 2, dp10 / 2, dp10 / 2, dp10 / 2);
                 textView.setLayoutParams(p);
                 textView.setEnabled(false);
                 textView.setBackgroundColor(Color.WHITE);
@@ -307,34 +315,26 @@ public class InspectActivity extends BaseActivity {
 
         @Override
         public void bindView(View view, final Context context, final Cursor cursor) {
-            LinearLayout layout = (LinearLayout) ((SyncedHorizontalScrollView)view).getChildAt(0);
+            LinearLayout layout = (LinearLayout) ((SyncedHorizontalScrollView) view).getChildAt(0);
             final String id = cursor.getString(0);
-            for (int i = 0; i<layout.getChildCount(); i++){
+            for (int i = 0; i < layout.getChildCount(); i++) {
                 final TextView textView = (TextView) layout.getChildAt(i);
                 textView.setText(String.format("%s ", cursor.getString(i)));
-                final int finalI = i;
-                textView.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        int w = textView.getMeasuredWidth();
-                        if(w>widths[finalI]) widths[finalI] = w;
-                        else textView.setWidth(widths[finalI]);
-                    }
-                });
                 textView.setEnabled(enableEditing);
-                textView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-                    @Override
-                    public void onFocusChange(View v, boolean hasFocus) {
-                        ContentValues values = new ContentValues();
-                        values.put(columns.get(finalI), textView.getText().toString());
-                        db.update(table, values,"_id = ?", new String[]{id});
-                    }
-                });
             }
+            view.post(() -> {
+                for (int i = 0; i < layout.getChildCount(); i++) {
+                    final TextView textView = (TextView) layout.getChildAt(i);
+                    int w = textView.getMeasuredWidth();
+                    if(w>widths[i]) widths[i] = w;
+                    else textView.setWidth(widths[i]);
+                }
+//                notifyDataSetChanged();
+            });
         }
     }
 
-    class RegXAdapter extends CursorAdapter{
+    class RegXAdapter extends CursorAdapter {
         RegXAdapter(Cursor c) {
             super(mContext, c, 1);
         }
@@ -365,10 +365,10 @@ public class InspectActivity extends BaseActivity {
             editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean hasFocus) {
-                    if(hasFocus) return;
+                    if (hasFocus) return;
                     String s = ((EditText) v).getText().toString().trim();
                     Cursor c = mDb.rawQuery("select * from regx where t = ?", new String[]{s});
-                    if(c.moveToFirst()){
+                    if (c.moveToFirst()) {
                         c.close();
                         return;
                     }

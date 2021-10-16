@@ -12,8 +12,8 @@ public class albSql extends SQLiteOpenHelper {
     final static String PARENT_ALBUM = "parent";
 
     private static final int version = 1;
-    private String Args[], Values[];
-    private boolean hasDefTables;
+    private final String[] Args, Values;
+    private final boolean hasDefTables;
 
     albSql(Context context, String name, String[] Args, String[] Values, boolean hasDefTables) {
         super(context, baseF + "/db/" + name, null, version);
@@ -29,11 +29,11 @@ public class albSql extends SQLiteOpenHelper {
                 "linkedIn, twit, base, hasDefTables, version integer default 0)");
 
         ContentValues values = new ContentValues();
-        for(int i = 0; i<Args.length; i++) values.put(Args[i], Values[i]);
-        values.put("hasDefTables", hasDefTables?1:0);
+        for (int i = 0; i < Args.length; i++) values.put(Args[i], Values[i]);
+        values.put("hasDefTables", hasDefTables ? 1 : 0);
         db.insert("info", null, values);
 
-        db.execSQL("create table album (_id integer primary key autoincrement, title, arte, parent integer default -1" +
+        db.execSQL("create table album (_id integer primary key autoincrement, title, hindi_title default '~', arte, parent integer default -1" +
                 ", lang integer default -1, url, url_rep_id integer default -1, lu datetime)");
 
         db.execSQL("create table places (_id integer primary key autoincrement, place, unique(place))");
@@ -42,13 +42,13 @@ public class albSql extends SQLiteOpenHelper {
 
         db.execSQL("create table regx (_id integer primary key autoincrement, t, unique(t))");
 
-        db.execSQL("create table alb (_id integer primary key autoincrement, title, arte, " +
+        db.execSQL("create table alb (_id integer primary key autoincrement, title, hindi_title default '', arte, " +
                 "parent integer default -1, subalbs integer default 0, audios integer default 0)");
 
         db.execSQL("create table lang (_id integer primary key autoincrement, lang, short)");
 
         String[] lang = {"Vaiṣṇava Bhajans", "Hare Kṛṣṇa Dhun"}, shrt = {"", "Kirtan"};
-        for (int i = 0; i<lang.length; i++){
+        for (int i = 0; i < lang.length; i++) {
             values = new ContentValues();
             values.put("lang", lang[i]);
             values.put("short", shrt[i]);
@@ -61,7 +61,7 @@ public class albSql extends SQLiteOpenHelper {
 
     }
 
-    static Audio getAlbum(Cursor c){
+    static Audio getAlbum(Cursor c) {
         Audio album = new Audio();
         album.isAlbum = true;
         album.id = c.getInt(0);
@@ -69,6 +69,7 @@ public class albSql extends SQLiteOpenHelper {
         album.arte = c.getString(c.getColumnIndex("arte"));
         album.lang = c.getInt(c.getColumnIndex("lang"));
         album.title = c.getString(c.getColumnIndex("title"));
+        album.hindi_title = c.getString(c.getColumnIndex("hindi_title"));
         album.url = c.getString(c.getColumnIndex("url"));
         album.date = c.getString(c.getColumnIndex("lu"));
         album.replacement = c.getInt(c.getColumnIndex("url_rep_id"));

@@ -15,7 +15,7 @@ public class audioSql extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("create table audio (_id integer primary key autoincrement, title, parent integer, arte, url, " +
+        db.execSQL("create table audio (_id integer primary key autoincrement, title, hindi_title default '~', parent integer, arte, url, " +
                 "date datetime, place integer, lang integer, size integer, size1 integer, alb default ' ', ref)");
     }
 
@@ -30,6 +30,7 @@ public class audioSql extends SQLiteOpenHelper {
         audio.parent = c.getLong(c.getColumnIndex("parent"));
         audio.arte = c.getString(c.getColumnIndex("arte"));
         audio.title = c.getString(c.getColumnIndex("title"));
+        audio.hindi_title = c.getString(c.getColumnIndex("hindi_title"));
         audio.url = c.getString(c.getColumnIndex("url"));
         audio.date = c.getString(c.getColumnIndex("date"));
         audio.place = c.getInt(c.getColumnIndex("place"));

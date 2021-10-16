@@ -8,6 +8,7 @@ import android.util.Log;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.regex.Matcher;
@@ -31,6 +32,7 @@ public class Audio {
     boolean isAlbum = false;
     public long id = -1;
     String title;
+    String hindi_title = "~";
     public long parent;
     String url = "";
     public String arte = "";
@@ -48,12 +50,13 @@ public class Audio {
 //    private final static String[][] bookName = {{""}, {"BG ", "Bhagavad Gita "}, {"SB ", "Srimad Bhagavatam "}, {"CC ", "Chaitanya Charitamrita ", "Caitanya Caritamrita "}, {"NOD"}};
 
     public void copy(Audio other) {
-        isAlbum = other.isAlbum;
+        this.isAlbum = other.isAlbum;
         this.id = other.id;
         this.arte = other.arte;
         this.parent = other.parent;
         this.size = other.size;
-        title = other.title;
+        this.title = other.title;
+        this.hindi_title = other.hindi_title;
         this.url = other.url;
         this.place = other.place;
         this.date = other.date;
@@ -113,7 +116,8 @@ public class Audio {
         }
     }
 
-    void setFromUrl(SQLiteDatabase db, boolean isBhajan, final Audio audio, boolean removeParent) {
+    void setFromUrl(SQLiteDatabase db, boolean isBhajan, final Audio audio, boolean removeParent, int ix, int sz) {
+        Log.e("setFromUrl", "Called");
         int replacement = audio.replacement;
         String url = this.url.trim();
         if (replacement > 0)
@@ -126,6 +130,7 @@ public class Audio {
             if (removeParent)
                 title = title.replaceAll("^" + audio.title.trim(), "");
             hari();
+            addNumber(ix, sz);
             return;
         }
         title = Html.fromHtml(url.substring(0, url.length() - 4).replaceAll("_", " ")).toString();
@@ -144,6 +149,17 @@ public class Audio {
         do {
             touchUp(isBhajan);
         } while (title.matches("^[\\-.\\s]*") || title.endsWith("-") || title.startsWith("0"));
+        addNumber(ix, sz);
+    }
+
+    private void addNumber(int ix, int sz) {
+        title = title.replaceFirst("^\\s*\\d*\\s*-*\\s*", "");
+        int nZero = String.valueOf(sz).length() - String.valueOf(ix).length();
+        char[] chars = new char[nZero];
+        Arrays.fill(chars, '0');
+        String result = new String(chars);
+        title = result + ix + ". " + title;
+        Log.e("setFromUrl new Title", title);
     }
 
     void hari() {

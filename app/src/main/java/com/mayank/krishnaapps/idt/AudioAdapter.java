@@ -39,7 +39,7 @@ import static com.mayank.krishnaapps.idt.albSql.PARENT_ALBUM;
 
 public class AudioAdapter extends BaseAdapter {
     private final UpdateActivity mContext;
-    private final int[] maxWidths = new int[8];
+    private final int[] maxWidths = new int[9];
 
     AudioAdapter(UpdateActivity mContext) {
         this.mContext = mContext;
@@ -87,6 +87,7 @@ public class AudioAdapter extends BaseAdapter {
 
         setEditText(holder, a, "url");
         setEditText(holder, a, "title");
+        setEditText(holder, a, "hindi_title");
         if (null == a.arte || a.arte.isEmpty()) {
             holder.arte.setImageResource(R.mipmap.ic_launcher_round);
         } else {
@@ -258,6 +259,10 @@ public class AudioAdapter extends BaseAdapter {
                 t = holder.title;
                 t.setText(a.title);
                 break;
+            case "hindi_title":
+                t = holder.hindi_title;
+                t.setText(a.hindi_title);
+                break;
             case "ref":
                 t = holder.ref;
                 t.setText(a.ref);
@@ -280,6 +285,9 @@ public class AudioAdapter extends BaseAdapter {
                 case "title":
                     a.title = t.getText().toString();
                     break;
+                case "hindi_title":
+                    a.hindi_title = t.getText().toString();
+                    break;
                 case "ref":
                     a.ref = t.getText().toString();
                     break;
@@ -300,7 +308,7 @@ public class AudioAdapter extends BaseAdapter {
 
     public static class ViewHolder {
         TextView id, parent, newLu, sz;
-        EditText url, title, ref, lu;
+        EditText url, title, hindi_title, ref, lu;
         ImageView arte;
         ImageButton add;
         Button langOrPlace;
@@ -310,6 +318,7 @@ public class AudioAdapter extends BaseAdapter {
             parent = v.findViewById(R.id.parent);
             url = v.findViewById(R.id.url);
             title = v.findViewById(R.id.title);
+            hindi_title = v.findViewById(R.id.hindi_title);
             arte = v.findViewById(R.id.arte);
             add = v.findViewById(R.id.add_fetch);
             lu = v.findViewById(R.id.lastUpdate);
@@ -331,6 +340,7 @@ public class AudioAdapter extends BaseAdapter {
             setWidth(holder.langOrPlace, 5);
             setWidth(holder.sz, 6);
             setWidth(holder.ref, 7);
+            setWidth(holder.hindi_title, 8);
         };
     }
     private void setWidth(TextView v, int i) {

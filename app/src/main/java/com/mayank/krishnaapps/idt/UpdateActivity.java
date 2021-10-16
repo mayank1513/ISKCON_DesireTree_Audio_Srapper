@@ -56,18 +56,76 @@ import static com.mayank.krishnaapps.idt.albSql.getAlbum;
 import static com.mayank.krishnaapps.idt.audioSql.getAudio;
 
 public class UpdateActivity extends BaseActivity {
+    static final int LEFT = 1, TOP = 2, RIGHT = 4, BOTTOM = 8;//CENTER = 0,
+    static SQLiteDatabase mAudioDb;
+    public ArrayList<String> temp;
     UpdateActivity mContext;
     AudioAdapter mAudioAdapter;
-    static SQLiteDatabase mAudioDb;
     String dbName, dir;
     Audio mAlbum;
     ArrayList<Audio> mAudioList = new ArrayList<>();
-    public ArrayList<String> temp;
-
-    private PowerManager.WakeLock mWakeLock;
     boolean editMode = false;
-
+    int emptyRef = 0;
+    int runningTasks = 0, updates = 0, newEntries = 0;
+    private PowerManager.WakeLock mWakeLock;
     private boolean started = false;
+
+    public static long insertAlbum(Activity mContext, final Audio audio, boolean confirmUpdate) {
+        if (audio.url.isEmpty()) {
+            Toast.makeText(mContext, "Please Enter Url", Toast.LENGTH_LONG).show();
+            return -1;
+        }
+        final ContentValues values = new ContentValues();
+        values.put("title", audio.title);
+        values.put("hindi_title", audio.hindi_title);
+        values.put("parent", audio.parent);
+        values.put("arte", audio.arte);
+        String url = audio.url;
+        values.put("url", url);
+
+        if (audio.isAlbum) {
+            if (null != audio.date && !audio.date.isEmpty())
+                values.put("lu", audio.date);
+            values.put("lang", audio.lang);
+            values.put("url_rep_id", audio.replacement);
+            final Cursor cursor = mDb.rawQuery("Select * from album where url = ? AND " + PARENT_ALBUM + " = ?",
+                    new String[]{url, audio.parent + ""});
+            if (!cursor.moveToFirst()) {
+                cursor.close();
+                return mDb.insert("album", null, values);
+            } else {
+                if (confirmUpdate) {
+                    mDb.update("album", values, "_id = ?", new String[]{cursor.getString(0)});
+                } else {
+                    (new AlertDialog.Builder(mContext)).setMessage("Album Already Exists")
+                            .setPositiveButton("Update", (dialog, which) -> mDb.update("album", values, "_id = ?", new String[]{cursor.getString(0)})).show();
+                }
+                return cursor.getInt(0);
+            }
+        } else {
+            if (null != audio.date)
+                values.put("date", audio.date);
+            values.put("place", audio.place);
+            values.put("ref", audio.ref);
+            values.put("size", audio.size);
+            final Cursor cursor = mAudioDb.rawQuery("Select * from audio where url = ? AND parent = ?",
+                    new String[]{url, audio.parent + ""});
+            if (!cursor.moveToFirst()) {
+                cursor.close();
+                return mAudioDb.insert("audio", null, values);
+            } else {
+                if (confirmUpdate) {
+                    mAudioDb.update("audio", values, "_id = ?", new String[]{cursor.getString(0)});
+                } else {
+                    (new AlertDialog.Builder(mContext)).setMessage("Already Exists")
+                            .setPositiveButton("Update", (dialog, which) -> mAudioDb.update("audio", values, "_id = ?", new String[]{cursor.getString(0)})).show();
+                }
+                final int id = cursor.getInt(0);
+                cursor.close();
+                return id;
+            }
+        }
+    }
 
     @Override
     protected void onStart() {
@@ -137,8 +195,6 @@ public class UpdateActivity extends BaseActivity {
         menu.add("Add All");
         return super.onCreateOptionsMenu(menu);
     }
-
-    int emptyRef = 0;
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -213,7 +269,7 @@ public class UpdateActivity extends BaseActivity {
             showProgressBar();
             for (int i = 1; i < size; i++) {
                 Audio a = mAudioList.get(i);
-                a.setFromUrl(mDb, mAlbum.lang < 2, mAlbum, removeParent);
+                a.setFromUrl(mDb, mAlbum.lang != -1 && mAlbum.lang < 2, mAlbum, removeParent, i, size);
                 insertAlbum(mContext, a, true);
                 display(i + " of " + size + " ...: " + a.title);
             }
@@ -294,261 +350,6 @@ public class UpdateActivity extends BaseActivity {
         c.close();
     }
 
-    int runningTasks = 0, updates = 0, newEntries = 0;
-
-    @SuppressLint("StaticFieldLeak")
-    public class FetchTask extends AsyncTask<Audio, String, String> {
-        Audio mAlbum;
-        ArrayList<Audio> mAudioList;
-        boolean mFetchAll;
-
-        FetchTask(ArrayList<Audio> mAudioList, boolean mFetchAll) {
-            this.mAudioList = mAudioList;
-            this.mFetchAll = mFetchAll;
-        }
-
-        @SuppressLint("WakelockTimeout")
-        @Override
-        protected void onPreExecute() {
-            mWakeLock.acquire();
-            mProgressBar.setVisibility(View.VISIBLE);
-            runningTasks++;
-        }
-
-        @Override
-        protected String doInBackground(Audio... albums) {
-            try {
-                final String url;
-                mAlbum = albums[0];
-                url = mAlbum.getUrl(mDb);
-                URLConnection urlConnection = new URL(url).openConnection();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
-                String line;
-
-                //noinspection StatementWithEmptyBody
-                while ((line = reader.readLine()) != null && !Html.fromHtml(line).toString().contains("Parent Directory"))
-                    ;
-
-                while ((line = reader.readLine()) != null) {
-                    Matcher m = linkPattern.matcher(line);
-                    if (!m.find()) break;
-                    String u = m.group().replace("<a href=\"", "").replace("\"", "");
-                    line = Html.fromHtml(line).toString();
-                    m = dPattern.matcher(line);
-                    if (!m.find()) break;
-                    String lu = m.group();
-                    String size = line.substring(line.indexOf(lu)).replace(lu, "");
-                    update(u, lu, size);
-//                    publishProgress(link.url, link.lu, link.size);
-                }
-            } catch (final IOException e) {
-                e.printStackTrace();
-                display(e.getMessage());
-                runOnUiThread(() -> Toast.makeText(mContext, e.getMessage(), Toast.LENGTH_LONG).show());
-            }
-            return null;
-        }
-
-        private void update(String url, String lu, String size) {
-            for (Audio a : mAudioList) {
-                if (a.url.replaceAll("#", mAlbum.replacement > 0 ? stems.get(mAlbum.replacement - 1) : "")
-                        .equals(url.replaceAll("/", "").trim())) {
-                    if (a.isAlbum && !a.date.equals(lu.trim())) {
-                        a.newLu = lu.trim();
-                        updates++;
-                    }
-                    if (optimizeStem)
-                        a.url = url.replaceAll("/", "").trim();
-                    if (!a.isAlbum && a.size == 0) {
-                        String s = size.replaceAll("(?i)([Mk])", "").trim();
-                        String s1 = s.replaceAll("\\s+", "");
-                        float sz = Float.parseFloat(s1);
-                        if (size.toLowerCase().contains("m"))
-                            a.size = (long) (sz * 1024 * 1024);
-                        else if (s.toLowerCase().contains("k"))
-                            a.size = (long) (sz * 1024);
-                        else
-                            a.size = (long) sz;
-                    }
-                    return;
-                }
-            }
-            Audio audio = new Audio();
-            audio.parent = mAlbum.id;
-            audio.arte = mAlbum.arte;
-            audio.url = url.trim();
-            if (url.toLowerCase().endsWith(".mp3") || url.toLowerCase().endsWith(".wav") || url.toLowerCase().endsWith(".wma")) {
-                String s = size.replaceAll("M", "").replaceAll("(?i)k", "").trim();
-                String s1 = s.replaceAll("\\s", "");
-                float sz = Float.parseFloat(s1);
-                if (size.toLowerCase().contains("m"))
-                    audio.size = (long) (sz * 1024 * 1024);
-                else if (s.toLowerCase().contains("k"))
-                    audio.size = (long) (sz * 1024);
-                else
-                    audio.size = (long) sz;
-                audio.setFromUrl(mDb, mAlbum.lang < 2, mAlbum, removeParent);
-            } else if (url.endsWith("/") || !url.contains(".")) {
-                audio.url = audio.url.replaceAll("/", "");
-                audio.isAlbum = true;
-                audio.lang = mAlbum.lang;
-                audio.title = Html.fromHtml(audio.url.replaceAll("_", " ").trim()).toString();
-                audio.hari();
-                audio.date = lu;
-                Cursor cursor = mDb.rawQuery("select * from album where " +
-                        PARENT_ALBUM + " = ? AND url = ?", new String[]{audio.parent + "", audio.url});
-                if (cursor.moveToFirst()) {
-                    audio.id = cursor.getInt(0);
-                    audio.newLu = audio.date;
-                    audio.date = cursor.getString(cursor.getColumnIndex("lu"));
-                    cursor.close();
-                }
-            } else
-                return;
-
-            if (mAlbum.replacement > 0)
-                audio.url = audio.url.replaceAll(stems.get(mAlbum.replacement - 1), "#");
-
-            if (optimizeStem)
-                audio.url = url.replaceAll("/", "").trim();
-            mAudioList.add(audio);
-            newEntries++;
-            display("Updates: " + updates + " New: " + newEntries + "\n" + audio.title);
-        }
-
-        @SuppressLint("SetTextI18n")
-        @Override
-        protected void onPostExecute(String s) {
-            display("Updates: " + updates + " New: " + newEntries);
-//            shorten url
-            shortenUrls(mAudioList, mAlbum, mFetchAll);
-            mGrid.setAdapter(mAudioAdapter = new AudioAdapter(mContext));
-            runningTasks--;
-            if (runningTasks <= 0) {
-                findViewById(R.id.progress).setVisibility(View.GONE);
-                try {
-                    mWakeLock.release();
-                } catch (Exception e) {
-                    Toast.makeText(mContext, e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            }
-        }
-    }
-
-    @SuppressLint("StaticFieldLeak")
-    public class FetchFromFileTask extends AsyncTask<Uri, String, String> {
-        @SuppressLint("WakelockTimeout")
-        @Override
-        protected void onPreExecute() {
-            mWakeLock.acquire();
-            mProgressBar.setVisibility(View.VISIBLE);
-            runningTasks++;
-        }
-
-        @Override
-        protected String doInBackground(Uri... uris) {
-            try {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(getContentResolver().openInputStream(uris[0])));
-                String line;
-
-                while ((line = reader.readLine()) != null) {
-                    update(line.trim().replaceAll(" ", "_") + (line.trim().endsWith("/") ? "" : "/"), "1900-04-13", "");
-//                    publishProgress(link.url, link.lu, link.size);
-                }
-            } catch (final IOException e) {
-                e.printStackTrace();
-                display(e.getMessage());
-                runOnUiThread(() -> Toast.makeText(mContext, e.getMessage(), Toast.LENGTH_LONG).show());
-            }
-            return null;
-        }
-
-        private void update(String url, String lu, String size) {
-            for (Audio a : mAudioList) {
-                if (a.url.replaceAll("#", mAlbum.replacement > 0 ? stems.get(mAlbum.replacement - 1) : "")
-                        .equals(url.replaceAll("/", "").trim())) {
-                    if (a.isAlbum && !a.date.equals(lu.trim())) {
-                        a.newLu = lu.trim();
-                        updates++;
-                    }
-                    if (optimizeStem)
-                        a.url = url.replaceAll("/", "").trim();
-                    if (!a.isAlbum && a.size == 0) {
-                        String s = size.replaceAll("(?i)([Mk])", "").trim();
-                        String s1 = s.replaceAll("\\s+", "");
-                        float sz = Float.parseFloat(s1);
-                        if (size.toLowerCase().contains("m"))
-                            a.size = (long) (sz * 1024 * 1024);
-                        else if (s.toLowerCase().contains("k"))
-                            a.size = (long) (sz * 1024);
-                        else
-                            a.size = (long) sz;
-                    }
-                    return;
-                }
-            }
-            Audio audio = new Audio();
-            audio.parent = mAlbum.id;
-            audio.arte = mAlbum.arte;
-            audio.url = url.trim();
-            if (url.toLowerCase().endsWith(".mp3") || url.toLowerCase().endsWith(".wav") || url.toLowerCase().endsWith(".wma")) {
-                String s = size.replaceAll("M", "").replaceAll("(?i)k", "").trim();
-                String s1 = s.replaceAll("\\s", "");
-                float sz = Float.parseFloat(s1);
-                if (size.toLowerCase().contains("m"))
-                    audio.size = (long) (sz * 1024 * 1024);
-                else if (s.toLowerCase().contains("k"))
-                    audio.size = (long) (sz * 1024);
-                else
-                    audio.size = (long) sz;
-                audio.setFromUrl(mDb, mAlbum.lang < 2, mAlbum, removeParent);
-            } else if (url.endsWith("/") || !url.contains(".")) {
-                audio.url = audio.url.replaceAll("/", "");
-                audio.isAlbum = true;
-                audio.lang = mAlbum.lang;
-                audio.title = Html.fromHtml(audio.url.replaceAll("_", " ").trim()).toString();
-                audio.hari();
-                audio.date = lu;
-                Cursor cursor = mDb.rawQuery("select * from album where " +
-                        PARENT_ALBUM + " = ? AND url = ?", new String[]{audio.parent + "", audio.url});
-                if (cursor.moveToFirst()) {
-                    audio.id = cursor.getInt(0);
-                    audio.newLu = audio.date;
-                    audio.date = cursor.getString(cursor.getColumnIndex("lu"));
-                    cursor.close();
-                }
-            } else
-                return;
-
-            if (mAlbum.replacement > 0)
-                audio.url = audio.url.replaceAll(stems.get(mAlbum.replacement - 1), "#");
-
-            if (optimizeStem)
-                audio.url = url.replaceAll("/", "").trim();
-            mAudioList.add(audio);
-            newEntries++;
-            display("Updates: " + updates + " New: " + newEntries + "\n" + audio.title);
-        }
-
-        @SuppressLint("SetTextI18n")
-        @Override
-        protected void onPostExecute(String s) {
-            display("Updates: " + updates + " New: " + newEntries);
-//            shorten url
-            shortenUrls(mAudioList, mAlbum, false);
-            mGrid.setAdapter(mAudioAdapter = new AudioAdapter(mContext));
-            runningTasks--;
-            if (runningTasks <= 0) {
-                findViewById(R.id.progress).setVisibility(View.GONE);
-                try {
-                    mWakeLock.release();
-                } catch (Exception e) {
-                    Toast.makeText(mContext, e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            }
-        }
-    }
-
     void shortenUrls(final ArrayList<Audio> mAudioList, final Audio mAlbum, final boolean fetchAll) {
         new Thread(() -> shortenUrl_(mAudioList, mAlbum, fetchAll)).start();
     }
@@ -618,146 +419,6 @@ public class UpdateActivity extends BaseActivity {
         }
     }
 
-    @SuppressLint("StaticFieldLeak")
-    public class FetchAll extends AsyncTask<Audio, String, String> {
-        int rebuild;
-        boolean removeP;
-
-        FetchAll(int rebuild, boolean removeP) {
-            this.rebuild = rebuild;
-            this.removeP = removeP;
-        }
-
-        @SuppressLint("WakelockTimeout")
-        protected void onPreExecute() {
-            mWakeLock.acquire();
-            mProgressBar.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        protected String doInBackground(Audio... audio) {
-            addAll(audio[0], removeP);
-            hideProgressBar();
-            if (mWakeLock.isHeld())
-                mWakeLock.release();
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            super.onPostExecute(s);
-            mProgressBar.setVisibility(View.GONE);
-        }
-
-        private void addAll(Audio a, boolean removeParent) {
-            Log.d("addAll", "begin");
-            ArrayList<Audio> list = new ArrayList<>();
-            addFromDb(list, a);
-            int size = list.size();
-            if (size < 2)
-                fetch(a, list);
-            else {
-                if (rebuild == 0) {
-                    for (int i = 1; i < size; i++) {
-                        Audio a1 = list.get(i);
-                        a1.url = a1.url.replaceAll(" ", "_");
-                        a1.setFromUrl(mDb, a.lang == 0 || a.lang == 1, a, removeParent);
-                        insertAlbum(mContext, a1, true);
-                        display(i + " of " + size + " ... " + a.title + "::" + a1.title);
-                    }
-                } else if (rebuild == 1) {
-                    for (int i = 1; i < size; i++) {
-                        Audio a1 = list.get(i);
-                        a1.url = a1.url.replaceAll(" ", "_");
-                        a1.setFromTitle(mDb, a.lang == 0 || a.lang == 1);
-                        insertAlbum(mContext, a1, true);
-                        display(i + " of " + size + " ... " + a.title + "::" + a1.title);
-                    }
-                }
-            }
-            display("\nUpdates: " + updates + " New: " + newEntries + "\n" + a.title);
-            shortenUrl_(list, a, true);
-            for (int i = 1; i < size; i++) {
-                Audio a1 = list.get(i);
-                if (a1.isAlbum)
-                    addAll(a1, removeParent);
-            }
-        }
-
-        private void fetch(Audio a, ArrayList<Audio> list) {
-            String url = a.getUrl(mDb);
-            try {
-                URLConnection urlConnection = new URL(url).openConnection();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
-                String line;
-
-                //noinspection StatementWithEmptyBody
-                while ((line = reader.readLine()) != null && !Html.fromHtml(line).toString().contains("Parent Directory"))
-                    ;
-
-                while ((line = reader.readLine()) != null) {
-                    Matcher m = linkPattern.matcher(line);
-                    if (!m.find()) break;
-                    String u = m.group().replace("<a href=\"", "").replace("\"", "");
-                    line = Html.fromHtml(line).toString();
-                    m = dPattern.matcher(line);
-                    if (!m.find()) break;
-                    String lu = m.group();
-                    String size = line.substring(line.indexOf(lu)).replace(lu, "");
-                    Audio audio = update(u, lu, size, a, removeParent);
-                    if (audio != null)
-                        list.add(audio);
-                    newEntries++;
-//                    publishProgress(link.url, link.lu, link.size);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        private Audio update(String url, String lu, String size, Audio a, boolean removeParent) {
-            Audio audio = new Audio();
-            audio.parent = a.id;
-            audio.arte = a.arte;
-            audio.url = url.trim();
-            if (url.toLowerCase().endsWith(".mp3") || url.toLowerCase().endsWith(".wav") || url.toLowerCase().endsWith(".wma")) {
-                String s = size.replaceAll("M", "").replaceAll("(?i)k", "").trim();
-                String s1 = s.replaceAll("\\s", "");
-                float sz = Float.parseFloat(s1);
-                if (size.toLowerCase().contains("m"))
-                    audio.size = (int) (sz * 1024 * 1024);
-                else if (s.toLowerCase().contains("k"))
-                    audio.size = (int) (sz * 1024);
-                audio.setFromUrl(mDb, a.lang == 0 || a.lang == 1, a, removeParent);
-            } else if (url.endsWith("/") || !url.contains(".")) {
-                audio.url = audio.url.replaceAll("/", "");
-                audio.isAlbum = true;
-                audio.lang = a.lang;
-                audio.title = Html.fromHtml(audio.url.replaceAll("_", " ").replaceFirst("^[0-9\\-\\s.]+", "").trim()).toString();
-                audio.hari();
-                audio.date = lu;
-                Cursor cursor = mDb.rawQuery("select * from album where " +
-                        PARENT_ALBUM + " = ? AND url = ?", new String[]{audio.parent + "", audio.url});
-                if (cursor.moveToFirst()) {
-                    audio.id = cursor.getInt(0);
-                    audio.newLu = audio.date;
-                    audio.date = cursor.getString(cursor.getColumnIndex("lu"));
-                    cursor.close();
-                }
-                audio.setFromUrl(mDb, a.lang == 0 || a.lang == 1, a, removeParent);
-            } else
-                return null;
-
-            if (a.replacement > 0)
-                audio.url = audio.url.replaceAll(stems.get(a.replacement - 1), "#");
-
-            if (optimizeStem)
-                audio.url = url.replaceAll("/", "").trim();
-            display("\nUpdates: " + updates + " New: " + newEntries + "\n" + audio.title);
-            return audio;
-        }
-    }
-
     private void shortenUrl(String s, Audio mAlbum, ArrayList<Audio> mAudioList) {
         if (mAlbum.replacement > 0) {
             for (int i = 1; i < mAudioList.size(); i++) {
@@ -806,62 +467,6 @@ public class UpdateActivity extends BaseActivity {
 //            Toast.makeText(mContext, "already exists", Toast.LENGTH_SHORT).show();
         }
         cursor.close();
-    }
-
-    public static long insertAlbum(Activity mContext, final Audio audio, boolean confirmUpdate) {
-        if (audio.url.isEmpty()) {
-            Toast.makeText(mContext, "Please Enter Url", Toast.LENGTH_LONG).show();
-            return -1;
-        }
-        final ContentValues values = new ContentValues();
-        values.put("title", audio.title);
-        values.put("parent", audio.parent);
-        values.put("arte", audio.arte);
-        String url = audio.url;
-        values.put("url", url);
-
-        if (audio.isAlbum) {
-            if (null != audio.date && !audio.date.isEmpty())
-                values.put("lu", audio.date);
-            values.put("lang", audio.lang);
-            values.put("url_rep_id", audio.replacement);
-            final Cursor cursor = mDb.rawQuery("Select * from album where url = ? AND " + PARENT_ALBUM + " = ?",
-                    new String[]{url, audio.parent + ""});
-            if (!cursor.moveToFirst()) {
-                cursor.close();
-                return mDb.insert("album", null, values);
-            } else {
-                if (confirmUpdate) {
-                    mDb.update("album", values, "_id = ?", new String[]{cursor.getString(0)});
-                } else {
-                    (new AlertDialog.Builder(mContext)).setMessage("Album Already Exists")
-                            .setPositiveButton("Update", (dialog, which) -> mDb.update("album", values, "_id = ?", new String[]{cursor.getString(0)})).show();
-                }
-                return cursor.getInt(0);
-            }
-        } else {
-            if (null != audio.date)
-                values.put("date", audio.date);
-            values.put("place", audio.place);
-            values.put("ref", audio.ref);
-            values.put("size", audio.size);
-            final Cursor cursor = mAudioDb.rawQuery("Select * from audio where url = ? AND parent = ?",
-                    new String[]{url, audio.parent + ""});
-            if (!cursor.moveToFirst()) {
-                cursor.close();
-                return mAudioDb.insert("audio", null, values);
-            } else {
-                if (confirmUpdate) {
-                    mAudioDb.update("audio", values, "_id = ?", new String[]{cursor.getString(0)});
-                } else {
-                    (new AlertDialog.Builder(mContext)).setMessage("Already Exists")
-                            .setPositiveButton("Update", (dialog, which) -> mAudioDb.update("audio", values, "_id = ?", new String[]{cursor.getString(0)})).show();
-                }
-                final int id = cursor.getInt(0);
-                cursor.close();
-                return id;
-            }
-        }
     }
 
     public void onClick(final View view) {
@@ -995,9 +600,6 @@ public class UpdateActivity extends BaseActivity {
                 }).setNegativeButton("Cancel", null).show();
     }
 
-    static final int LEFT = 1, TOP = 2, RIGHT = 4, BOTTOM = 8;//CENTER = 0,
-
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == PICKFILE_RESULT_CODE && resultCode == RESULT_OK) {
@@ -1005,6 +607,399 @@ public class UpdateActivity extends BaseActivity {
             (new FetchFromFileTask()).execute(uri);
         } else {
             super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    public class FetchTask extends AsyncTask<Audio, String, String> {
+        Audio mAlbum;
+        ArrayList<Audio> mAudioList;
+        boolean mFetchAll;
+
+        FetchTask(ArrayList<Audio> mAudioList, boolean mFetchAll) {
+            this.mAudioList = mAudioList;
+            this.mFetchAll = mFetchAll;
+        }
+
+        @SuppressLint("WakelockTimeout")
+        @Override
+        protected void onPreExecute() {
+            mWakeLock.acquire();
+            mProgressBar.setVisibility(View.VISIBLE);
+            runningTasks++;
+        }
+
+        @Override
+        protected String doInBackground(Audio... albums) {
+            try {
+                final String url;
+                mAlbum = albums[0];
+                url = mAlbum.getUrl(mDb);
+                URLConnection urlConnection = new URL(url).openConnection();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
+                String line;
+
+                //noinspection StatementWithEmptyBody
+                while ((line = reader.readLine()) != null && !Html.fromHtml(line).toString().contains("Parent Directory"))
+                    ;
+
+                while ((line = reader.readLine()) != null) {
+                    Matcher m = linkPattern.matcher(line);
+                    if (!m.find()) break;
+                    String u = m.group().replace("<a href=\"", "").replace("\"", "");
+                    line = Html.fromHtml(line).toString();
+                    m = dPattern.matcher(line);
+                    if (!m.find()) break;
+                    String lu = m.group();
+                    String size = line.substring(line.indexOf(lu)).replace(lu, "");
+                    update(u, lu, size);
+//                    publishProgress(link.url, link.lu, link.size);
+                }
+            } catch (final IOException e) {
+                e.printStackTrace();
+                display(e.getMessage());
+                runOnUiThread(() -> Toast.makeText(mContext, e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+            return null;
+        }
+
+        private void update(String url, String lu, String size) {
+            for (Audio a : mAudioList) {
+                if (a.url.replaceAll("#", mAlbum.replacement > 0 ? stems.get(mAlbum.replacement - 1) : "")
+                        .equals(url.replaceAll("/", "").trim())) {
+                    if (a.isAlbum && !a.date.equals(lu.trim())) {
+                        a.newLu = lu.trim();
+                        updates++;
+                    }
+                    if (optimizeStem)
+                        a.url = url.replaceAll("/", "").trim();
+                    if (!a.isAlbum && a.size == 0) {
+                        String s = size.replaceAll("(?i)([Mk])", "").trim();
+                        String s1 = s.replaceAll("\\s+", "");
+                        float sz = Float.parseFloat(s1);
+                        if (size.toLowerCase().contains("m"))
+                            a.size = (long) (sz * 1024 * 1024);
+                        else if (s.toLowerCase().contains("k"))
+                            a.size = (long) (sz * 1024);
+                        else
+                            a.size = (long) sz;
+                    }
+                    return;
+                }
+            }
+            Audio audio = new Audio();
+            audio.parent = mAlbum.id;
+            audio.arte = mAlbum.arte;
+            audio.url = url.trim();
+            if (url.toLowerCase().endsWith(".mp3") || url.toLowerCase().endsWith(".wav") || url.toLowerCase().endsWith(".wma")) {
+                String s = size.replaceAll("M", "").replaceAll("(?i)k", "").trim();
+                String s1 = s.replaceAll("\\s", "");
+                float sz = Float.parseFloat(s1);
+                if (size.toLowerCase().contains("m"))
+                    audio.size = (long) (sz * 1024 * 1024);
+                else if (s.toLowerCase().contains("k"))
+                    audio.size = (long) (sz * 1024);
+                else
+                    audio.size = (long) sz;
+                audio.setFromUrl(mDb, mAlbum.lang != -1 && mAlbum.lang < 2, mAlbum, removeParent, mAudioList.size(), mAudioList.size());
+            } else if (url.endsWith("/") || !url.contains(".")) {
+                audio.url = audio.url.replaceAll("/", "");
+                audio.isAlbum = true;
+                audio.lang = mAlbum.lang;
+                audio.title = Html.fromHtml(audio.url.replaceAll("_", " ").trim()).toString();
+                audio.hari();
+                audio.date = lu;
+                Cursor cursor = mDb.rawQuery("select * from album where " +
+                        PARENT_ALBUM + " = ? AND url = ?", new String[]{audio.parent + "", audio.url});
+                if (cursor.moveToFirst()) {
+                    audio.id = cursor.getInt(0);
+                    audio.newLu = audio.date;
+                    audio.date = cursor.getString(cursor.getColumnIndex("lu"));
+                    cursor.close();
+                }
+            } else
+                return;
+
+            if (mAlbum.replacement > 0)
+                audio.url = audio.url.replaceAll(stems.get(mAlbum.replacement - 1), "#");
+
+            if (optimizeStem)
+                audio.url = url.replaceAll("/", "").trim();
+            mAudioList.add(audio);
+            newEntries++;
+            display("Updates: " + updates + " New: " + newEntries + "\n" + audio.title);
+        }
+
+        @SuppressLint("SetTextI18n")
+        @Override
+        protected void onPostExecute(String s) {
+            display("Updates: " + updates + " New: " + newEntries);
+//            shorten url
+            shortenUrls(mAudioList, mAlbum, mFetchAll);
+            mGrid.setAdapter(mAudioAdapter = new AudioAdapter(mContext));
+            runningTasks--;
+            if (runningTasks <= 0) {
+                findViewById(R.id.progress).setVisibility(View.GONE);
+                try {
+                    mWakeLock.release();
+                } catch (Exception e) {
+                    Toast.makeText(mContext, e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    public class FetchFromFileTask extends AsyncTask<Uri, String, String> {
+        @SuppressLint("WakelockTimeout")
+        @Override
+        protected void onPreExecute() {
+            mWakeLock.acquire();
+            mProgressBar.setVisibility(View.VISIBLE);
+            runningTasks++;
+        }
+
+        @Override
+        protected String doInBackground(Uri... uris) {
+            try {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(getContentResolver().openInputStream(uris[0])));
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    update(line.trim().replaceAll(" ", "_") + (line.trim().endsWith("/") ? "" : "/"), "1900-04-13", "");
+//                    publishProgress(link.url, link.lu, link.size);
+                }
+            } catch (final IOException e) {
+                e.printStackTrace();
+                display(e.getMessage());
+                runOnUiThread(() -> Toast.makeText(mContext, e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+            return null;
+        }
+
+        private void update(String url, String lu, String size) {
+            for (Audio a : mAudioList) {
+                if (a.url.replaceAll("#", mAlbum.replacement > 0 ? stems.get(mAlbum.replacement - 1) : "")
+                        .equals(url.replaceAll("/", "").trim())) {
+                    if (a.isAlbum && !a.date.equals(lu.trim())) {
+                        a.newLu = lu.trim();
+                        updates++;
+                    }
+                    if (optimizeStem)
+                        a.url = url.replaceAll("/", "").trim();
+                    if (!a.isAlbum && a.size == 0) {
+                        String s = size.replaceAll("(?i)([Mk])", "").trim();
+                        String s1 = s.replaceAll("\\s+", "");
+                        float sz = Float.parseFloat(s1);
+                        if (size.toLowerCase().contains("m"))
+                            a.size = (long) (sz * 1024 * 1024);
+                        else if (s.toLowerCase().contains("k"))
+                            a.size = (long) (sz * 1024);
+                        else
+                            a.size = (long) sz;
+                    }
+                    return;
+                }
+            }
+            Audio audio = new Audio();
+            audio.parent = mAlbum.id;
+            audio.arte = mAlbum.arte;
+            audio.url = url.trim();
+            if (url.toLowerCase().endsWith(".mp3") || url.toLowerCase().endsWith(".wav") || url.toLowerCase().endsWith(".wma")) {
+                String s = size.replaceAll("M", "").replaceAll("(?i)k", "").trim();
+                String s1 = s.replaceAll("\\s", "");
+                float sz = Float.parseFloat(s1);
+                if (size.toLowerCase().contains("m"))
+                    audio.size = (long) (sz * 1024 * 1024);
+                else if (s.toLowerCase().contains("k"))
+                    audio.size = (long) (sz * 1024);
+                else
+                    audio.size = (long) sz;
+                audio.setFromUrl(mDb, mAlbum.lang != -1 && mAlbum.lang < 2, mAlbum, removeParent, mAudioList.size(), mAudioList.size());
+            } else if (url.endsWith("/") || !url.contains(".")) {
+                audio.url = audio.url.replaceAll("/", "");
+                audio.isAlbum = true;
+                audio.lang = mAlbum.lang;
+                audio.title = Html.fromHtml(audio.url.replaceAll("_", " ").trim()).toString();
+                audio.hari();
+                audio.date = lu;
+                Cursor cursor = mDb.rawQuery("select * from album where " +
+                        PARENT_ALBUM + " = ? AND url = ?", new String[]{audio.parent + "", audio.url});
+                if (cursor.moveToFirst()) {
+                    audio.id = cursor.getInt(0);
+                    audio.newLu = audio.date;
+                    audio.date = cursor.getString(cursor.getColumnIndex("lu"));
+                    cursor.close();
+                }
+            } else
+                return;
+
+            if (mAlbum.replacement > 0)
+                audio.url = audio.url.replaceAll(stems.get(mAlbum.replacement - 1), "#");
+
+            if (optimizeStem)
+                audio.url = url.replaceAll("/", "").trim();
+            mAudioList.add(audio);
+            newEntries++;
+            display("Updates: " + updates + " New: " + newEntries + "\n" + audio.title);
+        }
+
+        @SuppressLint("SetTextI18n")
+        @Override
+        protected void onPostExecute(String s) {
+            display("Updates: " + updates + " New: " + newEntries);
+//            shorten url
+            shortenUrls(mAudioList, mAlbum, false);
+            mGrid.setAdapter(mAudioAdapter = new AudioAdapter(mContext));
+            runningTasks--;
+            if (runningTasks <= 0) {
+                findViewById(R.id.progress).setVisibility(View.GONE);
+                try {
+                    mWakeLock.release();
+                } catch (Exception e) {
+                    Toast.makeText(mContext, e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    public class FetchAll extends AsyncTask<Audio, String, String> {
+        int rebuild;
+        boolean removeP;
+
+        FetchAll(int rebuild, boolean removeP) {
+            this.rebuild = rebuild;
+            this.removeP = removeP;
+        }
+
+        @SuppressLint("WakelockTimeout")
+        protected void onPreExecute() {
+            mWakeLock.acquire();
+            mProgressBar.setVisibility(View.VISIBLE);
+        }
+
+        @Override
+        protected String doInBackground(Audio... audio) {
+            addAll(audio[0], removeP);
+            hideProgressBar();
+            if (mWakeLock.isHeld())
+                mWakeLock.release();
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+            mProgressBar.setVisibility(View.GONE);
+        }
+
+        private void addAll(Audio a, boolean removeParent) {
+            Log.d("addAll", "begin");
+            ArrayList<Audio> list = new ArrayList<>();
+            addFromDb(list, a);
+            int size = list.size();
+            if (size < 2)
+                fetch(a, list);
+            else {
+                if (rebuild == 0) {
+                    for (int i = 1; i < size; i++) {
+                        Audio a1 = list.get(i);
+                        a1.url = a1.url.replaceAll(" ", "_");
+                        a1.setFromUrl(mDb, a.lang == 0 || a.lang == 1, a, removeParent, i, size);
+                        insertAlbum(mContext, a1, true);
+                        display(i + " of " + size + " ... " + a.title + "::" + a1.title);
+                    }
+                } else if (rebuild == 1) {
+                    for (int i = 1; i < size; i++) {
+                        Audio a1 = list.get(i);
+                        a1.url = a1.url.replaceAll(" ", "_");
+                        a1.setFromTitle(mDb, a.lang == 0 || a.lang == 1);
+                        insertAlbum(mContext, a1, true);
+                        display(i + " of " + size + " ... " + a.title + "::" + a1.title);
+                    }
+                }
+            }
+            display("\nUpdates: " + updates + " New: " + newEntries + "\n" + a.title);
+            shortenUrl_(list, a, true);
+            for (int i = 1; i < size; i++) {
+                Audio a1 = list.get(i);
+                if (a1.isAlbum)
+                    addAll(a1, removeParent);
+            }
+        }
+
+        private void fetch(Audio a, ArrayList<Audio> list) {
+            String url = a.getUrl(mDb);
+            try {
+                URLConnection urlConnection = new URL(url).openConnection();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
+                String line;
+
+                //noinspection StatementWithEmptyBody
+                while ((line = reader.readLine()) != null && !Html.fromHtml(line).toString().contains("Parent Directory"))
+                    ;
+
+                while ((line = reader.readLine()) != null) {
+                    Matcher m = linkPattern.matcher(line);
+                    if (!m.find()) break;
+                    String u = m.group().replace("<a href=\"", "").replace("\"", "");
+                    line = Html.fromHtml(line).toString();
+                    m = dPattern.matcher(line);
+                    if (!m.find()) break;
+                    String lu = m.group();
+                    String size = line.substring(line.indexOf(lu)).replace(lu, "");
+                    Audio audio = update(u, lu, size, a, removeParent, list.size());
+                    if (audio != null)
+                        list.add(audio);
+                    newEntries++;
+//                    publishProgress(link.url, link.lu, link.size);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private Audio update(String url, String lu, String size, Audio a, boolean removeParent, int sz_) {
+            Audio audio = new Audio();
+            audio.parent = a.id;
+            audio.arte = a.arte;
+            audio.url = url.trim();
+            if (url.toLowerCase().endsWith(".mp3") || url.toLowerCase().endsWith(".wav") || url.toLowerCase().endsWith(".wma")) {
+                String s = size.replaceAll("M", "").replaceAll("(?i)k", "").trim();
+                String s1 = s.replaceAll("\\s", "");
+                float sz = Float.parseFloat(s1);
+                if (size.toLowerCase().contains("m"))
+                    audio.size = (int) (sz * 1024 * 1024);
+                else if (s.toLowerCase().contains("k"))
+                    audio.size = (int) (sz * 1024);
+                audio.setFromUrl(mDb, a.lang == 0 || a.lang == 1, a, removeParent, sz_, sz_);
+            } else if (url.endsWith("/") || !url.contains(".")) {
+                audio.url = audio.url.replaceAll("/", "");
+                audio.isAlbum = true;
+                audio.lang = a.lang;
+                audio.title = Html.fromHtml(audio.url.replaceAll("_", " ").replaceFirst("^[0-9\\-\\s.]+", "").trim()).toString();
+                audio.hari();
+                audio.date = lu;
+                Cursor cursor = mDb.rawQuery("select * from album where " +
+                        PARENT_ALBUM + " = ? AND url = ?", new String[]{audio.parent + "", audio.url});
+                if (cursor.moveToFirst()) {
+                    audio.id = cursor.getInt(0);
+                    audio.newLu = audio.date;
+                    audio.date = cursor.getString(cursor.getColumnIndex("lu"));
+                    cursor.close();
+                }
+                audio.setFromUrl(mDb, a.lang == 0 || a.lang == 1, a, removeParent, sz_, sz_);
+            } else
+                return null;
+
+            if (a.replacement > 0)
+                audio.url = audio.url.replaceAll(stems.get(a.replacement - 1), "#");
+
+            if (optimizeStem)
+                audio.url = url.replaceAll("/", "").trim();
+            display("\nUpdates: " + updates + " New: " + newEntries + "\n" + audio.title);
+            return audio;
         }
     }
 }

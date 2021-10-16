@@ -26,10 +26,11 @@ import static com.mayank.krishnaapps.idt.albSql.getAlbum;
 import static com.mayank.krishnaapps.idt.audioSql.getAudio;
 
 class ExportHelper {
-    private static ArrayList<String> albumList = new ArrayList<>();
+    private static final ArrayList<String> albumList = new ArrayList<>();
+    private static final ArrayList<String> hindi_albumList = new ArrayList<>();
     private static ExportInterface exportInterface;
 
-    private static StringBuilder writingErrors = new StringBuilder();
+    private static final StringBuilder writingErrors = new StringBuilder();
 
     static void setExportInterface(ExportInterface export_Interface) {
         exportInterface = export_Interface;
@@ -41,56 +42,54 @@ class ExportHelper {
             exportInterface.showProgressBar();
             exportInterface.display("Preparing Database ...");
         }
-        ((new Thread(new Runnable() {
-            @SuppressWarnings("ResultOfMethodCallIgnored")
-            @Override
-            public void run() {
-                SQLiteDatabase db = SQLiteDatabase.openDatabase(baseF + "/db/" + dbName, null, SQLiteDatabase.OPEN_READWRITE);
-                SQLiteDatabase audioDb = SQLiteDatabase.openDatabase(baseF + "/db/" + dbName + "_audio", null, SQLiteDatabase.OPEN_READWRITE);
-                db.execSQL("drop table alb");
-                db.execSQL("create table alb (_id integer primary key autoincrement, title, arte, " +
-                        "parent integer default -1, subalbs integer default 0, audios integer default 0)");
-                refineAudioDb(audioDb, db);
-                mWakeLock.acquire();
-                albumList.clear();
-                audioDb.execSQL("update audio set alb = ' '");
+        ((new Thread(() -> {
+            SQLiteDatabase db = SQLiteDatabase.openDatabase(baseF + "/db/" + dbName, null, SQLiteDatabase.OPEN_READWRITE);
+            SQLiteDatabase audioDb = SQLiteDatabase.openDatabase(baseF + "/db/" + dbName + "_audio", null, SQLiteDatabase.OPEN_READWRITE);
+            db.execSQL("drop table alb");
+            db.execSQL("create table alb (_id integer primary key autoincrement, title, hindi_title default '', arte, " +
+                    "parent integer default -1, subalbs integer default 0, audios integer default 0)");
+            refineAudioDb(audioDb, db);
+            mWakeLock.acquire();
+            albumList.clear();
+            hindi_albumList.clear();
+            audioDb.execSQL("update audio set alb = ' '");
 
-                //                  export default albums here
-                ExportDefaultAlbums(db, audioDb, dbName);
+            //                  export default albums here
+            ExportDefaultAlbums(db, audioDb, dbName);
 
-                Cursor c = db.rawQuery("select * from album", null);
-                if (c.moveToFirst()) {
-                    ContentValues values = new ContentValues();
-                    values.put("version", 1);
-                    db.update("info", values, null, null);
-                    String arte = c.getString(c.getColumnIndex("arte"));
-                    String title = c.getString(c.getColumnIndex("title"));
-                    ExportAlbum(db, audioDb, c.getLong(0), title, title.isEmpty() ? "" : arte == null ? "" : arte);
-                }
-                c.close();
-
-                c = db.rawQuery("select * from alb", null);
-                if (c.moveToFirst()) {
-                    do {
-                        long id = c.getLong(0);
-                        ContentValues values = new ContentValues();
-                        Cursor cursor = audioDb.rawQuery("select * from audio where alb like '% " + encode(id).replaceAll("'", "''") + " %'", null);
-                        values.put("audios", cursor.getCount());
-                        cursor.close();
-                        cursor = db.rawQuery("select * from alb where parent = ?", new String[]{id + ""});
-                        values.put("subalbs", cursor.getCount());
-                        cursor.close();
-                        db.update("alb", values, "_id = ?", new String[]{id + ""});
-                    } while (c.moveToNext());
-                    c.close();
-                }
-
-                db.close();
-                audioDb.close();
-//        Writing to files
-                writeToFiles(dbName);
-                exportInterface.fetchWMA(0, "", dbName);
+            Cursor c = db.rawQuery("select * from album", null);
+            if (c.moveToFirst()) {
+                ContentValues values = new ContentValues();
+                values.put("version", 1);
+                db.update("info", values, null, null);
+                String arte = c.getString(c.getColumnIndex("arte"));
+                String title = c.getString(c.getColumnIndex("title"));
+                String hindi_title = c.getString(c.getColumnIndex("hindi_title"));
+                ExportAlbum(db, audioDb, c.getLong(0), title, hindi_title, title.isEmpty() ? "" : arte == null ? "" : arte);
             }
+            c.close();
+
+            c = db.rawQuery("select * from alb", null);
+            if (c.moveToFirst()) {
+                do {
+                    long id = c.getLong(0);
+                    ContentValues values = new ContentValues();
+                    Cursor cursor = audioDb.rawQuery("select * from audio where alb like '% " + encode(id).replaceAll("'", "''") + " %'", null);
+                    values.put("audios", cursor.getCount());
+                    cursor.close();
+                    cursor = db.rawQuery("select * from alb where parent = ?", new String[]{id + ""});
+                    values.put("subalbs", cursor.getCount());
+                    cursor.close();
+                    db.update("alb", values, "_id = ?", new String[]{id + ""});
+                } while (c.moveToNext());
+                c.close();
+            }
+
+            db.close();
+            audioDb.close();
+//        Writing to files
+            writeToFiles(dbName);
+            exportInterface.fetchWMA(0, "", dbName);
         }))).start();
         return 0;
     }
@@ -139,6 +138,7 @@ class ExportHelper {
                     int id = 1;
                     db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                     albumList.add("Vaiṣṇava Bhajans");
+                    hindi_albumList.add("वैष्णव भजन");
                     id = albumList.size();
                     ContentValues values = new ContentValues();
                     values.put("alb", " " + encode(id) + " ");
@@ -163,6 +163,7 @@ class ExportHelper {
                     int id = 2;
                     db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                     albumList.add("Bhagavad Gītā");
+                    hindi_albumList.add("भगवद गीता");
                     id = albumList.size();
                     ContentValues values = new ContentValues();
                     values.put("alb", " " + encode(id) + " ");
@@ -181,6 +182,7 @@ class ExportHelper {
                     int id = 3;
                     db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                     albumList.add("Śrīmad Bhāgavatam");
+                    hindi_albumList.add("श्रीमद भागवत");
                     id = albumList.size();
                     ContentValues values = new ContentValues();
                     values.put("alb", " " + encode(id) + " ");
@@ -199,6 +201,7 @@ class ExportHelper {
                     int id = 4;
                     db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                     albumList.add("Caitanya Caritāmṛta");
+                    hindi_albumList.add("चैतन्य चरितामृत");
                     id = albumList.size();
                     ContentValues values = new ContentValues();
                     values.put("alb", " " + encode(id) + " ");
@@ -217,6 +220,7 @@ class ExportHelper {
                     int id = 5;
                     db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                     albumList.add("Preraṇa");
+                    hindi_albumList.add("प्रेरणा");
                     id = albumList.size();
                     ContentValues values = new ContentValues();
                     values.put("alb", " " + encode(id) + " ");
@@ -235,6 +239,7 @@ class ExportHelper {
                     int id = 6;
                     db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                     albumList.add("Chetana");
+                    hindi_albumList.add("चेतना");
                     id = albumList.size();
                     ContentValues values = new ContentValues();
                     values.put("alb", " " + encode(id) + " ");
@@ -254,6 +259,7 @@ class ExportHelper {
                         int id = i + 6;
                         db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                         albumList.add("Chapter " + i);
+                        hindi_albumList.add("अध्याय " + i);
                         id = albumList.size();
                         ContentValues values = new ContentValues();
                         values.put("alb", " " + encode(id) + " ");
@@ -274,6 +280,7 @@ class ExportHelper {
                         int id = i + 24;
                         db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                         albumList.add("Canto " + i);
+                        hindi_albumList.add("स्कंद " + i);
                         id = albumList.size();
                         ContentValues values = new ContentValues();
                         values.put("alb", " " + encode(id) + " ");
@@ -292,10 +299,12 @@ class ExportHelper {
                 if (defAlbs[cc_lila].equals("1")) {
                     String[] lila = {"adi", "madhya", "antya"};
                     String[] lila1 = {"Ādī Līlā", "Madhya Līlā", "Antya Līlā"};
+                    String[] hindi_lila = {"आदि लीला", "मध्य लीला", "अंत्य लीला"};
                     for (int i = 1; i <= 3; i++) {
                         int id = i + 36;
                         db.execSQL("insert into main.alb(title, arte, parent) select title, arte, parent from tempdb.alb where _id = ?", new String[]{id + ""});
                         albumList.add(lila1[i - 1]);
+                        hindi_albumList.add(hindi_lila[i - 1]);
                         id = albumList.size();
                         ContentValues values = new ContentValues();
                         values.put("alb", " " + encode(id) + " ");
@@ -378,7 +387,7 @@ class ExportHelper {
                             .append(decodeUrl(a.url)).append("~").append(a.arte).append("~")
                             .append(decodeUrl(a.date)).append("~").append(a.size < 20 ? "" : encode(a.size)).append("~")
                             .append(decodeUrl(a.ref)).append("~").append(a.place < 0 ? "" : encode(a.place)).append("~")
-                            .append(encodeUrl(c.getString(c.getColumnIndex("alb")).trim()));
+                            .append(encodeUrl(c.getString(c.getColumnIndex("alb")).trim())).append(a.hindi_title);
 
                     if (exportInterface != null)
                         exportInterface.display("Database prepared.\nWriting to files ...\n\n/a" + (a.id / 500) + "/" + encode(a.id));
@@ -745,16 +754,18 @@ class ExportHelper {
         exportInterface.fetchWMA(totalSize, s.isEmpty() ? "empty" : s.substring(1), dbName);
     }
 
-    private static void ExportAlbum(SQLiteDatabase db, SQLiteDatabase audioDb, long ind, String alb, String arte) {
+    private static void ExportAlbum(SQLiteDatabase db, SQLiteDatabase audioDb, long ind, String alb, String hindi_alb, String arte) {
 //        update audio
         Cursor c = db.rawQuery("select * from album where parent = ?", new String[]{ind + ""});
         if (c.moveToFirst()) {
             do {
                 String s = !alb.endsWith("/") ? "/" : "";
+                String hs = !hindi_alb.endsWith("/") ? "/" : "";
                 String title = c.getString(c.getColumnIndex("title")).trim();
+                String hindi_title = c.getString(c.getColumnIndex("hindi_title")).trim();
                 String arte1 = c.getString(c.getColumnIndex("arte"));
                 arte1 = arte1 == null ? "" : arte1;
-                ExportAlbum(db, audioDb, c.getLong(0), alb + s + title,
+                ExportAlbum(db, audioDb, c.getLong(0), alb + s + title,hindi_alb + hs + hindi_title,
                         arte + s + (title.isEmpty() ? "" : arte1));
             } while (c.moveToNext());
         }
@@ -764,8 +775,9 @@ class ExportHelper {
         if (alb.startsWith("/")) alb = alb.substring(1);
         if (arte.startsWith("/")) arte = arte.substring(1);
 
-        String albums[] = alb.split("/");
-        String artes[] = arte.replaceAll("/", " / ").split("/");
+        String[] albums = alb.split("/");
+        String[] hi_albums = hindi_alb.split("/");
+        String[] artes = arte.replaceAll("/", " / ").split("/");
         StringBuilder s = new StringBuilder(" ");
         for (int i = 0; i < albums.length; i++) {
             String a = albums[i];
@@ -773,6 +785,7 @@ class ExportHelper {
             int x = albumList.indexOf(a);
             if (x < 0) {
                 albumList.add(a);
+                hindi_albumList.add(hi_albums[i]);
                 for (int j = 0; j < albumList.size(); j++) {
                     if (albumList.get(j).toLowerCase().equals(a.toLowerCase())) {
                         x = j;

@@ -18,9 +18,9 @@ import static com.mayank.krishnaapps.idt.MainActivity.albAdapter;
 import static com.mayank.krishnaapps.idt.MainActivity.baseF;
 
 public class AlbAdapter extends CursorAdapter {
-    private BaseActivity mContext;
+    private final BaseActivity mContext;
     final static int AlbAdapter = 0, LyAdapter = 1, LyaAdapter = 2;
-    int adapterType = AlbAdapter;
+    int adapterType;
     AlbAdapter(BaseActivity context, Cursor c, int adapterType) {
         super(context, c, 0);
         mContext = context;
